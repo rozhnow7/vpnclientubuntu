@@ -1,0 +1,58 @@
+##4) Устанавливаем L2TP/IPSek:
+sudo apt update && apt upgrade -y && apt autoremove -y 
+wget https://git.io/vpnsetup -O vpn.sh && sudo sh vpn.sh && sudo ikev2.sh --auto
+
+##5) Устанавливаем Wireguard на сервер:
+sudo apt update \
+	&& sudo apt upgrade -y \
+	&& sudo apt install docker.io docker-compose -y
+
+mkdir -p ~/wireguard/config
+
+cat << EOF > ~/wireguard/docker-compose.yml
+---
+version: "2.1"
+services:
+  wireguard:
+    image: lscr.io/linuxserver/wireguard
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - SERVERURL=23.94.143.177 #optional
+      - SERVERPORT=51820 #optional
+      - PEERS=100 #optional
+      - PEERDNS=auto #optional
+      - INTERNAL_SUBNET=10.13.13.0 #optional
+      - ALLOWEDIPS=0.0.0.0/0 #optional
+    volumes:
+      - ~/wireguard/config:/config
+      - /lib/modules:/lib/modules
+    ports:
+      - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+EOF
+
+docker-compose -f ~/wireguard/docker-compose.yml up -d
+
+docker ps
+
+##6) Устанавливаем Wireguard на клиентское устройство:
+##https://www.wireguard.com/install/
+
+##7.1) Для получения QR кода нового туннеля вводим:
+##docker exec -it wireguard /app/show-peer "число"
+##docker exec -it wireguard /app/show-peer 2
+##,где "число без кавычек - порядковый номер клиента от 1 до 100. Открываем приложение и сканируем QR код.
+
+
+##7.2) Для получения файла конфигурации далее вводим:
+##nano ~/wireguard/config/peer"число"/peer"число".conf
+##nano ~/wireguard/config/peer1/peer1.conf
+##,где "число" без кавычек и без пробела - порядковый номер клиента от 1 до 100. Копируем содержимое, нажимаем ^X + Y/Enter , создаём на рабочем столе текстовый документ с наименованием peer"число".conf , открываем его через блокнот, вставляем скопированное содержимое и сохраняем. Далее открываем приложение создаём новый туннель, указывая созданный нами файл.
